@@ -37,4 +37,5 @@ func parse(args string) {
 
 func main() {
 	MouseDemoMain()
+
 }

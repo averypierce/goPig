@@ -20,6 +20,7 @@ Based on tcell mouse demo - github.com/gdamore/tcell/blob/master/_demos/mouse.go
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"unicode"
@@ -87,7 +88,54 @@ and then compositie that all together
 
 type textBox struct {
 	x1, y1, x2, y2, cx, cy int
+	title                  string
+	content                string
+	s                      tcell.Screen
 	style                  tcell.Style
+	buffer                 bytes.Buffer
+}
+
+//All this logic needs to run on runes, NOT tcell events if we want resizing to work. or...no it doesnt. because text will be stored..hmms
+func (tb *textBox) drawBoarder() {
+	tb.cx = tb.x1 + 1
+	tb.cy = tb.y1 + 1
+	drawBox(tb.s, tb.x1, tb.y1, tb.x2, tb.y2, tb.style, ' ')
+	EmitStr(tb.s, tb.x1+5, tb.y1, tb.style, tb.title)
+}
+
+func (tb *textBox) input(key *tcell.EventKey) {
+	r := key.Rune()
+	if key.Key() == tcell.KeyBackspace || key.Key() == tcell.KeyBackspace2 {
+
+		if tb.cx > tb.x1+1 {
+			tb.cx--
+			EmitRune(tb.s, tb.cx, tb.cy, tb.style, ' ')
+		} else if tb.cy > tb.y1+1 {
+			//set cursor to prev line
+			tb.cy--
+			tb.cx = tb.x2 - 1
+			EmitRune(tb.s, tb.cx, tb.cy, tb.style, ' ')
+		}
+
+	} else if !unicode.IsControl(r) {
+
+		EmitRune(tb.s, tb.cx, tb.cy, tb.style, r)
+		tb.cx++
+		tb.buffer.WriteRune(r)
+	}
+	//check for textArea boundary
+	if tb.cx > tb.x2-1 {
+		tb.cx = tb.x1 + 1
+		tb.cy++
+	}
+}
+
+//x1: 0, y1: qh, x2: qw, y2: qh * 2
+
+func (tb *textBox) redraw(x1, y1, x2, y2 int) {
+	tb.x1, tb.y1, tb.x2, tb.y2 = x1, y1, x2, y2
+	tb.drawBoarder()
+
 }
 
 //DrawPigLayout uses tcell mouse demo functions to draw default layout for pig
@@ -108,7 +156,6 @@ func DrawPigLayout(s tcell.Screen, c tcell.Style) {
 	EmitStr(s, 5, qh, c, " Box Three ")
 	EmitStr(s, qw+5, qh, c, " Box Four ")
 	//emitRune(s, 1, qh*2+5, c, '>')
-
 }
 
 //EmitStr is part of tcell mouse demo. prints a string to specified coordinate
@@ -197,10 +244,14 @@ func MouseDemoMain() {
 	lks := ""
 	ecnt := 0
 	//drawBox(s, 0, qh*2, qw*2, qh*2+6, c, ' ')
-	DrawPigLayout(s, white)
+	//DrawPigLayout(s, white)
 	mint := InputArea(s, 1, qh*2+1, qw*2-1, qh*2+6-1, white)
 	//drawBox(s, qw, qh, qw*2, qh*2, c, ' ')
 	quadrant4 := InputArea(s, qw+1, qh+1, qw*2-1, qh*2-1, white)
+	//	drawBox(s, 0, qh, qw, qh*2, c, ' ')
+
+	mow := textBox{x1: 0, y1: qh, x2: qw, y2: qh * 2, title: " Box Three ", content: "", s: s, style: white}
+	mow.drawBoarder()
 
 	for {
 
@@ -216,6 +267,8 @@ func MouseDemoMain() {
 			Background(tcell.ColorBlue).
 			Foreground(tcell.ColorBlack)
 		w, h = s.Size()
+		qw = w / 2
+		qh = h/2 - 3
 
 		// always clear any old selection box
 		/*if ox >= 0 && oy >= 0 && bx >= 0 {
@@ -224,11 +277,14 @@ func MouseDemoMain() {
 
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
+			mow.redraw(0, qh, qw, qh*2)
+
 			s.Sync()
 			s.SetContent(w-1, h-1, 'R', nil, st)
 		case *tcell.EventKey:
 			mint(ev)
 			quadrant4(ev)
+			mow.input(ev)
 			//s.SetContent(w-2, h-2, ev.Rune(), nil, st)
 			s.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
