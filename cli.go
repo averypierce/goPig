@@ -136,6 +136,18 @@ func (tb *textBox) redraw(x1, y1, x2, y2 int) {
 	tb.x1, tb.y1, tb.x2, tb.y2 = x1, y1, x2, y2
 	tb.drawBoarder()
 
+	buf := tb.buffer.String()
+
+	for _, r := range buf {
+		EmitRune(tb.s, tb.cx, tb.cy, tb.style, r)
+		tb.cx++
+
+		if tb.cx > tb.x2-1 {
+			tb.cx = tb.x1 + 1
+			tb.cy++
+		}
+	}
+
 }
 
 //DrawPigLayout uses tcell mouse demo functions to draw default layout for pig
@@ -245,13 +257,20 @@ func MouseDemoMain() {
 	ecnt := 0
 	//drawBox(s, 0, qh*2, qw*2, qh*2+6, c, ' ')
 	//DrawPigLayout(s, white)
-	mint := InputArea(s, 1, qh*2+1, qw*2-1, qh*2+6-1, white)
+	//mint := InputArea(s, 1, qh*2+1, qw*2-1, qh*2+6-1, white)
 	//drawBox(s, qw, qh, qw*2, qh*2, c, ' ')
-	quadrant4 := InputArea(s, qw+1, qh+1, qw*2-1, qh*2-1, white)
+	//quadrant4 := InputArea(s, qw+1, qh+1, qw*2-1, qh*2-1, white)
 	//	drawBox(s, 0, qh, qw, qh*2, c, ' ')
-
-	mow := textBox{x1: 0, y1: qh, x2: qw, y2: qh * 2, title: " Box Three ", content: "", s: s, style: white}
-	mow.drawBoarder()
+	q1 := textBox{x1: 0, y1: 0, x2: qw, y2: qh, title: " Box One ", content: "", s: s, style: white}
+	q2 := textBox{x1: qw, y1: 0, x2: qw * 2, y2: qh, title: " Box Two ", content: "", s: s, style: white}
+	q3 := textBox{x1: 0, y1: qh, x2: qw, y2: qh * 2, title: " Box Three ", content: "", s: s, style: white}
+	q4 := textBox{x1: qw, y1: qh, x2: qw * 2, y2: qh * 2, title: " Box Four ", content: "", s: s, style: white}
+	cmd := textBox{x1: 0, y1: qh*2 + 1, x2: qw * 2, y2: qh*2 + 6, title: " Commands ", content: "", s: s, style: white}
+	q1.drawBoarder()
+	q2.drawBoarder()
+	q3.drawBoarder()
+	q4.drawBoarder()
+	cmd.drawBoarder()
 
 	for {
 
@@ -277,14 +296,18 @@ func MouseDemoMain() {
 
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
-			mow.redraw(0, qh, qw, qh*2)
+			q1.redraw(0, 0, qw, qh)
+			q2.redraw(qw, 0, qw*2, qh)
+			q3.redraw(0, qh, qw, qh*2)
+			q4.redraw(qw, qh, qw*2, qh*2)
+			cmd.redraw(0, qh*2, qw*2, qh*2+6)
 
 			s.Sync()
 			s.SetContent(w-1, h-1, 'R', nil, st)
 		case *tcell.EventKey:
-			mint(ev)
-			quadrant4(ev)
-			mow.input(ev)
+			//mint(ev)
+			//quadrant4(ev)
+			q3.input(ev)
 			//s.SetContent(w-2, h-2, ev.Rune(), nil, st)
 			s.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
