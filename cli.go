@@ -79,13 +79,6 @@ func InputArea(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style) func(key *
 	}
 }
 
-/*
-textArea + bordered thing
-
-and lets have the textbuffer be its own type, with its own logging methods
-and then compositie that all together
-*/
-
 type textBox struct {
 	x1, y1, x2, y2, cx, cy int
 	title                  string
@@ -130,8 +123,6 @@ func (tb *textBox) input(key *tcell.EventKey) {
 	}
 }
 
-//x1: 0, y1: qh, x2: qw, y2: qh * 2
-
 func (tb *textBox) redraw(x1, y1, x2, y2 int) {
 	tb.x1, tb.y1, tb.x2, tb.y2 = x1, y1, x2, y2
 	tb.drawBoarder()
@@ -167,7 +158,6 @@ func DrawPigLayout(s tcell.Screen, c tcell.Style) {
 	EmitStr(s, qw+5, 0, c, " Box Two ")
 	EmitStr(s, 5, qh, c, " Box Three ")
 	EmitStr(s, qw+5, qh, c, " Box Four ")
-	//emitRune(s, 1, qh*2+5, c, '>')
 }
 
 //EmitStr is part of tcell mouse demo. prints a string to specified coordinate
@@ -221,7 +211,6 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, r rune) {
 func MouseDemoMain() {
 
 	encoding.Register()
-
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
@@ -235,7 +224,6 @@ func MouseDemoMain() {
 		Background(tcell.ColorPurple).
 		Foreground(tcell.ColorWhite)
 	s.SetStyle(defStyle)
-	s.EnableMouse()
 	s.Clear()
 
 	posfmt := "Mouse: %d, %d  "
@@ -245,22 +233,14 @@ func MouseDemoMain() {
 		Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
 
 	mx, my := -1, -1
-	ox, oy := -1, -1
-	//bx, by := -1, -1
 	w, h := s.Size()
 	qw := w / 2
 	qh := h/2 - 3
 
-	lchar := '*'
 	bstr := ""
 	lks := ""
 	ecnt := 0
-	//drawBox(s, 0, qh*2, qw*2, qh*2+6, c, ' ')
-	//DrawPigLayout(s, white)
-	//mint := InputArea(s, 1, qh*2+1, qw*2-1, qh*2+6-1, white)
-	//drawBox(s, qw, qh, qw*2, qh*2, c, ' ')
-	//quadrant4 := InputArea(s, qw+1, qh+1, qw*2-1, qh*2-1, white)
-	//	drawBox(s, 0, qh, qw, qh*2, c, ' ')
+
 	q1 := textBox{x1: 0, y1: 0, x2: qw, y2: qh, title: " Box One ", content: "", s: s, style: white}
 	q2 := textBox{x1: qw, y1: 0, x2: qw * 2, y2: qh, title: " Box Two ", content: "", s: s, style: white}
 	q3 := textBox{x1: 0, y1: qh, x2: qw, y2: qh * 2, title: " Box Three ", content: "", s: s, style: white}
@@ -282,17 +262,10 @@ func MouseDemoMain() {
 		bstr = ""
 		ev := s.PollEvent()
 		st := tcell.StyleDefault.Background(tcell.ColorRed)
-		up := tcell.StyleDefault.
-			Background(tcell.ColorBlue).
-			Foreground(tcell.ColorBlack)
+
 		w, h = s.Size()
 		qw = w / 2
 		qh = h/2 - 3
-
-		// always clear any old selection box
-		/*if ox >= 0 && oy >= 0 && bx >= 0 {
-			drawSelect(s, ox, oy, bx, by, false)
-		}*/
 
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
@@ -303,13 +276,9 @@ func MouseDemoMain() {
 			cmd.redraw(0, qh*2, qw*2, qh*2+6)
 
 			s.Sync()
-			s.SetContent(w-1, h-1, 'R', nil, st)
 		case *tcell.EventKey:
-			//mint(ev)
-			//quadrant4(ev)
+
 			q3.input(ev)
-			//s.SetContent(w-2, h-2, ev.Rune(), nil, st)
-			s.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
 				ecnt++
 				if ecnt > 1 {
@@ -320,82 +289,11 @@ func MouseDemoMain() {
 				s.Sync()
 			} else {
 				ecnt = 0
-				/*if ev.Rune() == 'C' || ev.Rune() == 'c' {
-					s.Clear()
-				}*/
 			}
 			lks = ev.Name()
-		case *tcell.EventMouse:
-			x, y := ev.Position()
-			button := ev.Buttons()
-			for i := uint(0); i < 8; i++ {
-				if int(button)&(1<<i) != 0 {
-					bstr += fmt.Sprintf(" Button%d", i+1)
-				}
-			}
-			if button&tcell.WheelUp != 0 {
-				bstr += " WheelUp"
-			}
-			if button&tcell.WheelDown != 0 {
-				bstr += " WheelDown"
-			}
-			if button&tcell.WheelLeft != 0 {
-				bstr += " WheelLeft"
-			}
-			if button&tcell.WheelRight != 0 {
-				bstr += " WheelRight"
-			}
-			// Only buttons, not wheel events
-			button &= tcell.ButtonMask(0xff)
-			ch := '*'
 
-			if button != tcell.ButtonNone && ox < 0 {
-				ox, oy = x, y
-			}
-			switch ev.Buttons() {
-			case tcell.ButtonNone:
-				if ox >= 0 {
-					bg := tcell.Color((lchar - '0') * 2)
-					drawBox(s, ox, oy, x, y,
-						up.Background(bg),
-						lchar)
-					ox, oy = -1, -1
-					//bx, by = -1, -1
-				}
-			case tcell.Button1:
-				ch = '1'
-			case tcell.Button2:
-				ch = '2'
-			case tcell.Button3:
-				ch = '3'
-			case tcell.Button4:
-				ch = '4'
-			case tcell.Button5:
-				ch = '5'
-			case tcell.Button6:
-				ch = '6'
-			case tcell.Button7:
-				ch = '7'
-			case tcell.Button8:
-				ch = '8'
-			default:
-				ch = '*'
-
-			}
-			/*if button != tcell.ButtonNone {
-				bx, by = x, y
-			}*/
-			lchar = ch
-			//s.SetContent(w-1, h-1, 'M', nil, st)
-			mx, my = x, y
 		default:
 			s.SetContent(w-1, h-1, 'X', nil, st)
 		}
-
-		/*
-			if ox >= 0 && bx >= 0 {
-				drawSelect(s, ox, oy, bx, by, true)
-			}
-		*/
 	}
 }
